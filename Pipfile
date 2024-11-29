@@ -12,6 +12,15 @@ numpy = "*"
 scipy = "*"
 statsmodels = "*"
 tqdm = "*"
+association-metrics = "*"
+plotly-express = "*"
+plotly = "*"
+scikit-learn = "*"
+scikit-posthocs = "*"
+pingouin = "*"
+category-encoders = "*"
+xgboost = "*"
+catboost = "*"
 
 [dev-packages]
 

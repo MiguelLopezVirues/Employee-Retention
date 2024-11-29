@@ -101,7 +101,7 @@ def plot_relationships_categorical_target(df, target,hue=None, cat_type="count",
 
     fig.suptitle("Difference in distrubtion by target class.", y=0.93)
     for ax, feature in zip(axes, columns):
-        if df[feature].dtype in [int,float]:
+        if df[feature].dtype in ["int64","float64"]:
             if num_type == "box":
                 sns.boxplot(data=df,
                             x=target,
@@ -125,8 +125,8 @@ def plot_relationships_categorical_target(df, target,hue=None, cat_type="count",
                             hue=target,
                             ax=ax)
 
-            
-            ax.set_title(feature)
+        
+        ax.set_title(feature)
 
     if len(columns) % 2 != 0:
             fig.delaxes(ax=axes[-1])
