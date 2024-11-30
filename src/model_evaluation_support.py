@@ -8,21 +8,34 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Para realizar la regresión lineal y la evaluación del modelo
+# Para realizar clasificacion y la evaluación del modelo
 # -----------------------------------------------------------------------
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    cohen_kappa_score,
+    confusion_matrix
+)
 from sklearn.model_selection import cross_validate
 
 from sklearn.feature_selection import RFECV
-from skopt import BayesSearchCV
 
 import statsmodels.api as sm
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PowerTransformer
+
+
+import xgboost as xgb
+import pickle
+
+import shap
 
 
 # Gestionar los warnings
@@ -64,46 +77,34 @@ def model_evaluation_CV_run(run_name, models, scores, X, y, crossval, verbose=Fa
     n_splits = crossval.get_n_splits(X=X, y=y)
 
     warnings.filterwarnings('ignore')
-    mlflow.autolog()
 
-    with mlflow.start_run(run_name=f"{run_name} - Model Evaluation CV"):
-        for name, model in models:
-            # Start a child run for each model
-            with mlflow.start_run(run_name=f"{name} - Model Evaluation CV", nested=True):
+    for name, model in models:
+        # Start a child run for each model
 
-                mlflow.log_param("model_name", name)
-                mlflow.log_param("cross_val_splits", n_splits)
+        if verbose:
+            print(f"\nTraining {name}.")
+        # Cross_val
+        cv_results = cross_validate(model, X, y, cv=crossval, scoring=scores, verbose=verbose, return_train_score=True)
 
-                if verbose:
-                    print(f"\nTraining {name}.")
-                # Cross_val
-                cv_results = cross_validate(model, X, y, cv=crossval, scoring=scores, verbose=verbose, return_train_score=True)
-
-                # Store results for each fold and each metric
-                for split in range(n_splits):
-                    result = {"Model": name, "Split": split + 1}
-                    for score in scores:
-                        # prepare results_df
-                        result[f"test_{score}"] = cv_results[f"test_{score}"][split]
-                        result[f"train_{score}"] = cv_results[f"train_{score}"][split]
-
-                    # log metrics
-                    mlflow.log_metric(f"mean_test_{score}", cv_results[f"test_{score}"].mean())
-                    mlflow.log_metric(f"std_test_{score}", cv_results[f"test_{score}"].std())
-                    mlflow.log_metric(f"mean_train_{score}", cv_results[f"train_{score}"].mean())
-                    mlflow.log_metric(f"std_train_{score}", cv_results[f"train_{score}"].std())
-                    results.append(result)
+        # Store results for each fold and each metric
+        for split in range(n_splits):
+            result = {"Model": name, "Split": split + 1}
+            for score in scores:
+                # prepare results_df
+                result[f"test_{score}"] = cv_results[f"test_{score}"][split]
+                result[f"train_{score}"] = cv_results[f"train_{score}"][split]
                 
+            results.append(result)
+        
 
-                if verbose:
-                    # Print results numerically
-                    print(f'--\n{name} model:')
-                    for score in scores:
-                        print("%s: mean %f, std (%f) " % (score, cv_results[f"test_{score}"].mean(), cv_results[f"test_{score}"].std()))
+        if verbose:
+            # Print results numerically
+            print(f'--\n{name} model:')
+            for score in scores:
+                print("%s: mean %f, std (%f) " % (score, cv_results[f"test_{score}"].mean(), cv_results[f"test_{score}"].std()))
 
 
         results_df = pd.DataFrame(results)
-        log_dataframe_to_mlflow(results_df, artifact_path="test_results")
 
     warnings.filterwarnings('default')
 
@@ -112,21 +113,19 @@ def model_evaluation_CV_run(run_name, models, scores, X, y, crossval, verbose=Fa
 
 
 def run_gridsearch_experiment(X_train, y_train, model_name, model, param_grid, cross_val, score, verbosity):
-    mlflow.autolog()
-    with mlflow.start_run(run_name=f"GridSearch_CV_{model_name}"):
+    # Dynamically set verbosity if supported
+    # if 'verbose' in inspect.signature(model.__init__).parameters:
+    #     model.verbose = verbosity  
 
-        # Dynamically set verbosity if supported
-        if 'verbose' in inspect.signature(model.__init__).parameters:
-            model.verbose = verbosity  
 
-        grid_search = GridSearchCV(model, 
-                                param_grid, 
-                                cv=cross_val, 
-                                scoring=score, 
-                                n_jobs = -1,
-                                verbose=verbosity)
+    grid_search = GridSearchCV(model, 
+                            param_grid, 
+                            cv=cross_val, 
+                            scoring=score, 
+                            n_jobs = -1,
+                            verbose=verbosity)
 
-        grid_search.fit(X_train, y_train)
+    grid_search.fit(X_train, y_train)
     return {
         "model_name": model_name,
         "pipeline": grid_search.best_estimator_,
@@ -136,28 +135,26 @@ def run_gridsearch_experiment(X_train, y_train, model_name, model, param_grid, c
 
 
 def run_bayessearch_experiment(X_train, y_train, model_name, model, param_space, cross_val, n_iter, score,verbosity, seed =42):
-    mlflow.autolog()
-    with mlflow.start_run(run_name=f"BayesSearch_CV_{model_name}"):
+    pass
+    # # Dynamically set verbosity if supported
+    # if 'verbose' in inspect.signature(model.__init__).parameters:
+    #     model.verbose = verbosity  
+    
+    # bayes_search = BayesSearchCV(estimator=model,
+    #                             search_spaces=param_space, 
+    #                             n_iter=n_iter, 
+    #                             cv=cross_val, 
+    #                             scoring=score,
+    #                             n_jobs=-1,
+    #                             random_state=seed)
 
-        # Dynamically set verbosity if supported
-        if 'verbose' in inspect.signature(model.__init__).parameters:
-            model.verbose = verbosity  
-        
-        bayes_search = BayesSearchCV(estimator=model,
-                                    search_spaces=param_space, 
-                                    n_iter=n_iter, 
-                                    cv=cross_val, 
-                                    scoring=score,
-                                    n_jobs=-1,
-                                    random_state=seed)
-
-        bayes_search.fit(X_train, y_train)
-    return {
-        "model_name": model_name,
-        "pipeline": bayes_search.best_estimator_,
-        "params": bayes_search.best_params_,
-        "score": bayes_search.best_score_
-    }
+    # bayes_search.fit(X_train, y_train)
+    # return {
+    #     "model_name": model_name,
+    #     "pipeline": bayes_search.best_estimator_,
+    #     "params": bayes_search.best_params_,
+    #     "score": bayes_search.best_score_
+    # }
 
 
 
@@ -198,38 +195,20 @@ def plot_prediction_residuals(y_test, y_test_pred):
 
 
 def test_evaluate_model(run_name, model, X_train, y_train, X_test, y_test, best_params=None, tag=None,train_multiplier=1,test_multiplier=1):
-    mlflow.autolog()
+    modelo = model.set_params(**(best_params or {}))
 
-    with mlflow.start_run(run_name=f"{run_name} - test_evaluation") as run:
-        modelo = model.set_params(**(best_params or {}))
+    modelo.fit(X_train, y_train)
 
-        modelo.fit(X_train, y_train)
+    y_train_pred = modelo.predict(X_train) * train_multiplier
+    y_test_pred = modelo.predict(X_test) * test_multiplier
+    y_train = y_train*train_multiplier
+    y_test = y_test*test_multiplier
 
-        y_train_pred = modelo.predict(X_train) * train_multiplier
-        y_test_pred = modelo.predict(X_test) * test_multiplier
-        y_train = y_train*train_multiplier
-        y_test = y_test*test_multiplier
+    metricas = calculate_train_test_metrics(y_train, y_test, y_train_pred, y_test_pred)
 
-        mlflow.autolog(disable=True)
-        metricas = calculate_train_test_metrics(y_train, y_test, y_train_pred, y_test_pred)
+    resultados_df = pd.DataFrame(metricas).T
 
-        # Registrar metricas a MLflow
-        for train_test in metricas.keys():
-            for metric_name, value in metricas[train_test].items():
-                mlflow.log_metric(f"{train_test}_{metric_name}", value)
-
-        mlflow.autolog()
-
-        resultados_df = pd.DataFrame(metricas).T
-
-        # Guardar como csv para poder registrarlo en MLFlow
-        log_dataframe_to_mlflow(resultados_df, artifact_path="test_results")
-
-        # Guardar tag con detalles adicionales
-        if tag:
-            mlflow.set_tag(tag[0], tag[1])
-
-        plot_prediction_residuals(y_test, y_test_pred)
+    plot_prediction_residuals(y_test, y_test_pred)
 
     return resultados_df
 
@@ -259,34 +238,166 @@ def log_dataframe_to_mlflow(dataframe: pd.DataFrame, artifact_path: str):
 
 
 
-def calculate_train_test_metrics(y_train, y_test, y_train_pred, y_test_pred):
-        # Calcular modelo naive de la media para train y test
-        y_mean_train = np.mean(y_train)
-        y_mean_pred_train = np.full_like(y_train, y_mean_train)
+def calcular_metricas(self, modelo_nombre):
+    """
+    Calcula métricas de rendimiento para el modelo seleccionado, incluyendo AUC, Kappa,
+    tiempo de computación y núcleos utilizados.
+    """
+    if modelo_nombre not in self.resultados:
+        raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
+    
+    pred_train = self.resultados[modelo_nombre]["pred_train"]
+    pred_test = self.resultados[modelo_nombre]["pred_test"]
 
-        y_mean_test = np.mean(y_test)
-        y_mean_pred_test = np.full_like(y_test, y_mean_test)
+    if pred_train is None or pred_test is None:
+        raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de calcular métricas.")
+    
+    modelo = self.resultados[modelo_nombre]["mejor_modelo"]
 
-        # Calcular todas las métricas
-        metricas = {
-            'train': {
-                'r2_score': r2_score(y_train, y_train_pred),
-                'MAE': mean_absolute_error(y_train, y_train_pred),
-                'MSE': mean_squared_error(y_train, y_train_pred),
-                'MSE_naive': mean_squared_error(y_train, y_mean_pred_train),
-                'RMSE': root_mean_squared_error(y_train, y_train_pred)
-            },
-            'test': {
-                'r2_score': r2_score(y_test, y_test_pred),
-                'MAE': mean_absolute_error(y_test, y_test_pred),
-                'MSE': mean_squared_error(y_test, y_test_pred),
-                'MSE_naive': mean_squared_error(y_test, y_mean_pred_test),
-                'RMSE': root_mean_squared_error(y_test, y_test_pred)
+    # Registrar tiempo de ejecución
+    start_time = time.time()
+    if hasattr(modelo, "predict_proba"):
+        prob_train = modelo.predict_proba(self.X_train)[:, 1]
+        prob_test = modelo.predict_proba(self.X_test)[:, 1]
+    else:
+        prob_train = prob_test = None
+    elapsed_time = time.time() - start_time
 
-            }
-        }
+    # Registrar núcleos utilizados
+    num_nucleos = psutil.cpu_count(logical=True)
 
-        return metricas
+    # Métricas para conjunto de entrenamiento
+    metricas_train = {
+        "accuracy": accuracy_score(self.y_train, pred_train),
+        "precision": precision_score(self.y_train, pred_train, average='weighted', zero_division=0),
+        "recall": recall_score(self.y_train, pred_train, average='weighted', zero_division=0),
+        "f1": f1_score(self.y_train, pred_train, average='weighted', zero_division=0),
+        "kappa": cohen_kappa_score(self.y_train, pred_train),
+        "auc": roc_auc_score(self.y_train, prob_train) if prob_train is not None else None,
+        "time_seconds": elapsed_time,
+        "n_jobs": num_nucleos
+    }
+
+    # Métricas para conjunto de prueba
+    metricas_test = {
+        "accuracy": accuracy_score(self.y_test, pred_test),
+        "precision": precision_score(self.y_test, pred_test, average='weighted', zero_division=0),
+        "recall": recall_score(self.y_test, pred_test, average='weighted', zero_division=0),
+        "f1": f1_score(self.y_test, pred_test, average='weighted', zero_division=0),
+        "kappa": cohen_kappa_score(self.y_test, pred_test),
+        "auc": roc_auc_score(self.y_test, prob_test) if prob_test is not None else None,
+        "time_seconds": elapsed_time,
+        "n_jobs": num_nucleos
+    }
+
+    # Combinar métricas en un DataFrame
+    return pd.DataFrame({"train": metricas_train, "test": metricas_test}).T
+
+def plot_matriz_confusion(self, modelo_nombre):
+    """
+    Plotea la matriz de confusión para el modelo seleccionado.
+    """
+    if modelo_nombre not in self.resultados:
+        raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
+
+    pred_test = self.resultados[modelo_nombre]["pred_test"]
+
+    if pred_test is None:
+        raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de calcular la matriz de confusión.")
+
+    # Matriz de confusión
+    matriz_conf = confusion_matrix(self.y_test, pred_test)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(matriz_conf, annot=True, fmt='g', cmap='Blues')
+    plt.title(f"Matriz de Confusión ({modelo_nombre})")
+    plt.xlabel("Predicción")
+    plt.ylabel("Valor Real")
+    plt.show()
+    
+def importancia_predictores(self, modelo_nombre):
+    """
+    Calcula y grafica la importancia de las características para el modelo seleccionado.
+    """
+    if modelo_nombre not in self.resultados:
+        raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
+    
+    modelo = self.resultados[modelo_nombre]["mejor_modelo"]
+    if modelo is None:
+        raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de calcular importancia de características.")
+    
+    # Verificar si el modelo tiene importancia de características
+    if hasattr(modelo, "feature_importances_"):
+        importancia = modelo.feature_importances_
+    elif modelo_nombre == "logistic_regression" and hasattr(modelo, "coef_"):
+        importancia = modelo.coef_[0]
+    else:
+        print(f"El modelo '{modelo_nombre}' no soporta la importancia de características.")
+        return
+    
+    # Crear DataFrame y graficar
+    importancia_df = pd.DataFrame({
+        "Feature": self.X.columns,
+        "Importance": importancia
+    }).sort_values(by="Importance", ascending=False)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x="Importance", y="Feature", data=importancia_df, palette="viridis")
+    plt.title(f"Importancia de Características ({modelo_nombre})")
+    plt.xlabel("Importancia")
+    plt.ylabel("Características")
+    plt.show()
+
+def plot_shap_summary(self, modelo_nombre):
+    """
+    Genera un SHAP summary plot para el modelo seleccionado.
+    Maneja correctamente modelos de clasificación con múltiples clases.
+    """
+    if modelo_nombre not in self.resultados:
+        raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
+
+    modelo = self.resultados[modelo_nombre]["mejor_modelo"]
+
+    if modelo is None:
+        raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de generar el SHAP plot.")
+
+    # Usar TreeExplainer para modelos basados en árboles
+    if modelo_nombre in ["tree", "random_forest", "gradient_boosting", "xgboost"]:
+        explainer = shap.TreeExplainer(modelo)
+        shap_values = explainer.shap_values(self.X_test)
+
+        # Verificar si los SHAP values tienen múltiples clases (dimensión 3)
+        if isinstance(shap_values, list):
+            # Para modelos binarios, seleccionar SHAP values de la clase positiva
+            shap_values = shap_values[1]
+        elif len(shap_values.shape) == 3:
+            # Para Decision Trees, seleccionar SHAP values de la clase positiva
+            shap_values = shap_values[:, :, 1]
+    else:
+        # Usar el explicador genérico para otros modelos
+        explainer = shap.Explainer(modelo, self.X_test, check_additivity=False)
+        shap_values = explainer(self.X_test).values
+
+    # Generar el summary plot estándar
+    shap.summary_plot(shap_values, self.X_test, feature_names=self.X.columns)
+
+# Función para asignar colores
+def color_filas_por_modelo(row):
+    if row["modelo"] == "tree":
+        return ["background-color: #e6b3e0; color: black"] * len(row)  
+    
+    elif row["modelo"] == "random_forest":
+        return ["background-color: #c2f0c2; color: black"] * len(row) 
+
+    elif row["modelo"] == "gradient_boosting":
+        return ["background-color: #ffd9b3; color: black"] * len(row)  
+
+    elif row["modelo"] == "xgboost":
+        return ["background-color: #f7b3c2; color: black"] * len(row)  
+
+    elif row["modelo"] == "logistic_regression":
+        return ["background-color: #b3d1ff; color: black"] * len(row)  
+    
+    return ["color: black"] * len(row)
 
 
 def calcular_ic(df: pd.DataFrame, columna: str, alpha: float, metodo: str ="normal", seed: int = None, n_bootstrap: int = 1000) -> tuple:
@@ -346,7 +457,6 @@ def calcular_ic(df: pd.DataFrame, columna: str, alpha: float, metodo: str ="norm
     return limite_inferior, limite_superior
 
 def select_best_features(X_train, y_train, score, cross_val, model="linear_regression", params=None, method="grid"):
-    mlflow.autolog(disable=True)
     if model == "decision_tree":
         if method == "grid":
             search = GridSearchCV(
@@ -391,8 +501,7 @@ def select_best_features(X_train, y_train, score, cross_val, model="linear_regre
 def run_pipelines(X_train, y_train, preprocessing_pipeline, models, cross_val, score, verbosity, search_method="grid"):
     best_pipelines = []
     for model_name, (model, params) in models.items():
-        pipeline = Pipeline(preprocessing_pipeline.steps + [('regressor', model)])
-
+        pipeline = Pipeline(preprocessing_pipeline.steps + [('classifier', model)])
         
         if search_method == "grid":
             result = run_gridsearch_experiment(X_train=X_train, y_train=y_train, model_name=model_name, model=pipeline, 
@@ -413,4 +522,4 @@ def run_pipelines(X_train, y_train, preprocessing_pipeline, models, cross_val, s
         print(f"Best Score: {best_model['score']}")
         print(f"Best Parameters: {best_model['params']}")
 
-    return best_model
+    return best_model, best_pipelines

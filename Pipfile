@@ -21,6 +21,8 @@ pingouin = "*"
 category-encoders = "*"
 xgboost = "*"
 catboost = "*"
+mlflow = "*"
+shap = "*"
 
 [dev-packages]
 
