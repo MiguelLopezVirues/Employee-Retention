@@ -100,8 +100,7 @@ def load_and_clean(list_of_paths, id_column):
     employee_attrition = convert_to_object(employee_attrition, additional_columns)
 
     # intentional - 0 is the same as NaN here
-    employee_attrition.loc[(employee_attrition["numcompaniesworked"] == 0),"numcompaniesworked"] = "0"
-    print("ksks")
+    employee_attrition.loc[(employee_attrition["numcompaniesworked"] == 0),"numcompaniesworked"] = "unknown"
 
 
     # regroup categories
@@ -116,8 +115,8 @@ def load_and_clean(list_of_paths, id_column):
     employee_attrition["attrition"] = employee_attrition["attrition"].astype("Int64")
 
     # ensure all object types are categorical
-    employee_attrition.select_dtypes(["object","category"]) = (employee_attrition.select_dtypes(["object","category"])
-                                                                .astype("str").astype("object"))
+    categorical = employee_attrition.select_dtypes(["object","category"]).columns
+    employee_attrition[categorical] = employee_attrition[categorical].astype("str")
 
 
     return employee_attrition
