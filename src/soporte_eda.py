@@ -10,6 +10,7 @@ from scipy import stats
 import math
 from statsmodels.stats.proportion import proportions_ztest # para hacer el ztest
 
+
 # Visualizacion de datos
 # -----------------------------------------------------------------------
 import seaborn as sns
@@ -136,8 +137,8 @@ def plot_relationships_categorical_target(df, target,hue=None, cat_type="count",
     plt.show()
 
 
-def plot_combined_target_distribution(df, target, feature, bins=25, repl_dict={}):
-    fig, ax = plt.subplots(figsize=(10, 6))
+def plot_combined_target_distribution(df, target, feature, bins=25, repl_dict={}, figsize=(10, 6)):
+    fig, ax = plt.subplots(figsize=figsize)
 
     fig.suptitle(f"Proportion of '{target}' by '{feature}' distribution")
     # Plot histogram without automatic legend
@@ -171,3 +172,37 @@ def plot_combined_target_distribution(df, target, feature, bins=25, repl_dict={}
     fig.legend([f"{feature.capitalize()} distribution", f"{target.capitalize()} proportion"], loc="upper right")
 
     plt.show()
+
+
+def calculate_rank_biserial(df, target, features):
+    """
+    Calcula Rank-Biserial y p-valores para variables continuas con un objetivo binario.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame con los datos.
+        target (str): Nombre de la columna binaria (0/1).
+        features (list): Lista de columnas continuas a evaluar.
+
+    Returns:
+        pd.DataFrame: DataFrame con Rank-Biserial y p-valores.
+    """
+    rb_corr_target = {"Rank-biserial": [],
+                      "P-value": []}
+
+    tested_features = []
+    for feature in features:
+        if feature != target:
+            x_0 = df.loc[df[target] == 0, feature]
+            x_1 = df.loc[df[target] == 1, feature]
+            
+            stat, p_value = stats.mannwhitneyu(x_0, x_1, alternative='two-sided')
+            n_0 = len(x_0)
+            n_1 = len(x_1)
+            rank_biserial = (2 * stat) / (n_0 * n_1) - 1
+
+            rb_corr_target["Rank-biserial"].append(rank_biserial)
+            rb_corr_target["P-value"].append(p_value)
+            tested_features.append(feature)
+
+    results_df = pd.DataFrame(rb_corr_target, index=tested_features)
+    return results_df

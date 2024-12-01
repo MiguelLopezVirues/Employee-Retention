@@ -25,6 +25,7 @@ shap = "*"
 imblearn = "*"
 matplotlib = "*"
 sinfo = "*"
+flask = "*"
 
 [dev-packages]
 

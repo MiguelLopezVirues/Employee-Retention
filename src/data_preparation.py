@@ -120,3 +120,27 @@ def load_and_clean(list_of_paths, id_column):
 
 
     return employee_attrition
+
+
+def load_and_clean_json(data_json):
+
+    X_pred = pd.DataFrame(data_json, index=[0])
+
+    # replace categorical NaN
+    X_pred.loc[(X_pred["numcompaniesworked"] == 0),"numcompaniesworked"] = "unknown"
+
+    # regroup categories
+    X_pred = regroup_categories_attrition(X_pred)
+
+    # remove "error" outliers
+    X_pred = remove_incorrect_values(X_pred)
+
+    # ensure all object types are categorical
+    categorical = ['businesstravel', 'department', 'education', 'educationfield', 'gender', 'joblevel', 'jobrole', 
+                    'maritalstatus', 'numcompaniesworked', 'percentsalaryhike', 'stockoptionlevel', 'trainingtimeslastyear', 
+                    'yearssincelastpromotion', 'yearswithcurrmanager', 'environmentsatisfaction', 'jobsatisfaction', 
+                    'worklifebalance', 'jobinvolvement', 'performancerating']
+    
+    X_pred[categorical] = X_pred[categorical].astype("str")
+
+    return X_pred

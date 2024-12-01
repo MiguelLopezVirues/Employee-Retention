@@ -71,6 +71,8 @@ class AnalisisModelosClasificacion:
                                     "pred_test": None, "pred_test_prob": None, 
                                     "best_score":None, "best_params": None,
                                     "mean_fit_time": None,"mean_score_time": None} for nombre in self.modelos}
+        
+        print(self.X_train.columns)
 
     def ajustar_modelo(self, modelo_nombre, preprocessing_pipeline, param_grid=None, cross_validation = 5, score="average_precision", pipeline=False):
         """

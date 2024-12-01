@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "fc76ba5ff2c7e395b53d003d5a420cc3a1343f3fd593f37c47a763a4aea72f63"
+            "sha256": "1d9430ae196334b0e3c44b7a07a6a152e4d402e20f0a5c0a85f8eb27fcafc925"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -343,6 +343,7 @@
                 "sha256:5f873c5184c897c8d9d1b05df1e3d01b14910ce69607a117bd3277098a5836ac",
                 "sha256:d667207822eb83f1c4b50949b1623c8fc8d51f2341d65f72e1a1815397551136"
             ],
+            "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==3.1.0"
         },
@@ -580,7 +581,7 @@
                 "sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369",
                 "sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d"
             ],
-            "markers": "platform_system == 'Windows'",
+            "markers": "python_version >= '3.7'",
             "version": "==3.1.4"
         },
         "joblib": {
