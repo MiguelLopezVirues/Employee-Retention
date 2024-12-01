@@ -296,22 +296,22 @@ class AnalisisModelosClasificacion:
         # Combinar métricas en un DataFrame
         return pd.DataFrame({"train": metricas_train, "test": metricas_test}).T
     
-    def plot_cohens_kappa(self, model_names):
+    def plot_score_by_threshold(self, model_names, scorer=cohen_kappa_score, scorer_name='Cohen\'s Kappa'):
         thresholds = [i / 100 for i in range(1, 100)]
 
-        kappas_dict = {model_name: list() for model_name in model_names}
+        scorer_dict = {model_name: list() for model_name in model_names}
 
         for model_name in model_names:
             for threshold in thresholds:
                 preds = (self.resultados[model_name]["pred_test_prob"] >= threshold).astype(int)
-                kappas_dict[model_name].append(cohen_kappa_score(self.y_test, preds))
+                scorer_dict[model_name].append(scorer(self.y_test, preds))
 
-            plt.plot(thresholds, kappas_dict[model_name], label=model_name)
+            plt.plot(thresholds, scorer_dict[model_name], label=model_name)
 
         plt.xlabel('Threshold')
-        plt.ylabel('Cohen\'s Kappa')
+        plt.ylabel(f'{scorer_name}')
         plt.legend()
-        plt.title('Kappa vs Threshold')
+        plt.title(f'{scorer_name} vs Threshold')
         plt.show()
 
     def plot_matriz_confusion(self, modelo_nombre):
