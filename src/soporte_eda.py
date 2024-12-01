@@ -56,7 +56,7 @@ def exploracion_dataframe(dataframe):
 
 
     # controlar valores únicos de las variables
-    print("Comprobamos una representación mínima para valores numéricos:")
+    print("Comprobamos que no haya valores con una sola variable:")
     for feature in dataframe.columns:
         if dataframe[feature].nunique() == 1:
             print(f"● La variable {feature} tiene 1 solo valor único. Se elimina.")
@@ -133,4 +133,41 @@ def plot_relationships_categorical_target(df, target,hue=None, cat_type="count",
 
 
     plt.subplots_adjust(hspace=0.6)
+    plt.show()
+
+
+def plot_combined_target_distribution(df, target, feature, bins=25, repl_dict={}):
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    fig.suptitle(f"Proportion of '{target}' by '{feature}' distribution")
+    # Plot histogram without automatic legend
+    sns.histplot(data=df,
+                x=feature,
+                bins='auto',
+                ax=ax)
+
+    # Create second axis
+    ax2 = ax.twinx()
+
+    sns.histplot(data=df,
+             x=feature,
+             hue=target,  # Differentiates by attrition status
+             stat="probability",  # Normalize within bins
+             bins='auto',  # Adjust number of bins as needed
+             multiple="fill",  # Makes each bin stack to 1 (100%)
+             palette={"Yes": "red", "No": "#FFFFFF"},
+             ax=ax2,
+             alpha=0.3,
+             edgecolor=None)
+
+
+    # Set y-axis limits
+    ax2.set_ylim(0, 1)
+
+    # remov automatic ax2 legend
+    ax2.get_legend().remove()
+
+    # Add custom legend for both plots
+    fig.legend([f"{feature.capitalize()} distribution", f"{target.capitalize()} proportion"], loc="upper right")
+
     plt.show()

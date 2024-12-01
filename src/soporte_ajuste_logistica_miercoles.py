@@ -45,7 +45,7 @@ import os
 
 class AnalisisModelosClasificacion:
     def __init__(self, dataframe, variable_dependiente, iteracion="default", seed=42):
-        self.dataframe = dataframe
+        self.dataframe = dataframe.copy()
         self.variable_dependiente = variable_dependiente
         self.X = dataframe.drop(variable_dependiente, axis=1)
         self.y = dataframe[variable_dependiente]
@@ -54,6 +54,7 @@ class AnalisisModelosClasificacion:
         )
         self.seed = seed
         self.iteracion = iteracion
+        self.categorical = self.X_train.select_dtypes(include=["object"]).columns.to_list()
 
         # Diccionario de modelos y resultados
         self.modelos = {
@@ -62,14 +63,16 @@ class AnalisisModelosClasificacion:
             "random_forest": RandomForestClassifier(n_jobs=-1,random_state=self.seed),
             "gradient_boosting": GradientBoostingClassifier(random_state=self.seed),
             "xgboost": xgb.XGBClassifier(n_jobs=-1),
-            "catboost": catb.CatBoostClassifier(thread_count=-1)
+            "catboost": catb.CatBoostClassifier(thread_count=-1, random_state=seed, 
+                                                cat_features=self.categorical, early_stopping_rounds=50,
+                                                eval_metric="PRAUC", custom_metric="PRAUC", verbose=100)
         }
         self.resultados = {nombre: {"mejor_modelo": None, "pred_train": None, 
                                     "pred_test": None, "pred_test_prob": None, 
                                     "best_score":None, "best_params": None,
                                     "mean_fit_time": None,"mean_score_time": None} for nombre in self.modelos}
 
-    def ajustar_modelo(self, modelo_nombre, preprocessing_pipeline, param_grid=None, cross_validation = 5, score="average_precision"):
+    def ajustar_modelo(self, modelo_nombre, preprocessing_pipeline, param_grid=None, cross_validation = 5, score="average_precision", pipeline=False):
         """
         Ajusta el modelo seleccionado con GridSearchCV.
         """
@@ -196,8 +199,11 @@ class AnalisisModelosClasificacion:
                     'thread_count': [-1],
                 }
             }
-
-        pipeline = Pipeline(preprocessing_pipeline.steps + [('classifier', modelo)])
+        
+        if pipeline:
+            pipeline = Pipeline(preprocessing_pipeline.steps + [('classifier', modelo)])
+        else:
+            pipeline = modelo
 
         if param_grid is None:
             param_grid = parametros_default.get(modelo_nombre, {})
@@ -209,6 +215,7 @@ class AnalisisModelosClasificacion:
                                    scoring=score,
                                    verbose=1,
                                    n_jobs=-1)
+        
 
         grid_search.fit(self.X_train, self.y_train)
 

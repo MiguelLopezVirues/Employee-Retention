@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 streamlit = "*"
 seaborn = "*"
-matplotlib = "*"
 pandas = "*"
 numpy = "*"
 scipy = "*"
@@ -23,6 +22,8 @@ xgboost = "*"
 catboost = "*"
 mlflow = "*"
 shap = "*"
+imblearn = "*"
+matplotlib = "*"
 
 [dev-packages]
 

@@ -81,9 +81,9 @@ def load_and_clean(list_of_paths, id_column):
     # load
     employee_attrition = import_join_csv(list_of_paths, id_column)
 
+
     # convert target to number
     employee_attrition = employee_attrition.replace(repl_dict)
-
 
     # drop duplicates
     employee_attrition.drop_duplicates(inplace=True)
@@ -99,6 +99,11 @@ def load_and_clean(list_of_paths, id_column):
     additional_columns = ["yearssincelastpromotion","yearswithcurrmanager"]
     employee_attrition = convert_to_object(employee_attrition, additional_columns)
 
+    # intentional - 0 is the same as NaN here
+    employee_attrition.loc[(employee_attrition["numcompaniesworked"] == 0),"numcompaniesworked"] = "0"
+    print("ksks")
+
+
     # regroup categories
     employee_attrition = regroup_categories_attrition(employee_attrition)
 
@@ -106,7 +111,13 @@ def load_and_clean(list_of_paths, id_column):
     # remove "error" outliers
     employee_attrition = remove_incorrect_values(employee_attrition)
 
+
     # ensure target is numeric
     employee_attrition["attrition"] = employee_attrition["attrition"].astype("Int64")
+
+    # ensure all object types are categorical
+    employee_attrition.select_dtypes(["object","category"]) = (employee_attrition.select_dtypes(["object","category"])
+                                                                .astype("str").astype("object"))
+
 
     return employee_attrition
