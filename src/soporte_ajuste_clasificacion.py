@@ -267,12 +267,12 @@ class AnalisisModelosClasificacion:
         # Métricas para conjunto de entrenamiento
         metricas_train = {
             "accuracy": accuracy_score(self.y_train, pred_train),
-            "precision": precision_score(self.y_train, pred_train, average='weighted', zero_division=0),
-            "recall": recall_score(self.y_train, pred_train, average='weighted', zero_division=0),
-            "f1": f1_score(self.y_train, pred_train, average='weighted', zero_division=0),
+            "precision": precision_score(self.y_train, pred_train, average='binary', zero_division=0),
+            "recall": recall_score(self.y_train, pred_train, average='binary', zero_division=0),
+            "f1": f1_score(self.y_train, pred_train, average='binary', zero_division=0),
             "kappa": cohen_kappa_score(self.y_train, pred_train),
             "auc": roc_auc_score(self.y_train, prob_train) if prob_train is not None else None,
-            "average_precision": average_precision_score(self.y_train, prob_train, average='weighted') if prob_train is not None else None,
+            "average_precision": average_precision_score(self.y_train, prob_train, average='binary') if prob_train is not None else None,
             "model_mean_fit_time": self.resultados[modelo_nombre]["mean_fit_time"],
             "model_mean_score_time": self.resultados[modelo_nombre]["mean_score_time"],
             "n_jobs": num_nucleos
@@ -281,12 +281,12 @@ class AnalisisModelosClasificacion:
         # Métricas para conjunto de prueba
         metricas_test = {
             "accuracy": accuracy_score(self.y_test, pred_test),
-            "precision": precision_score(self.y_test, pred_test, average='weighted', zero_division=0),
-            "recall": recall_score(self.y_test, pred_test, average='weighted', zero_division=0),
-            "f1": f1_score(self.y_test, pred_test, average='weighted', zero_division=0),
+            "precision": precision_score(self.y_test, pred_test, average='binary', zero_division=0),
+            "recall": recall_score(self.y_test, pred_test, average='binary', zero_division=0),
+            "f1": f1_score(self.y_test, pred_test, average='binary', zero_division=0),
             "kappa": cohen_kappa_score(self.y_test, pred_test),
             "auc": roc_auc_score(self.y_test, prob_test) if prob_test is not None else None,
-            "average_precision": average_precision_score(self.y_test, prob_test, average='weighted') if prob_test is not None else None,
+            "average_precision": average_precision_score(self.y_test, prob_test, average='binary') if prob_test is not None else None,
             "model_mean_fit_time": self.resultados[modelo_nombre]["mean_fit_time"],
             "model_mean_score_time": self.resultados[modelo_nombre]["mean_score_time"],
             "n_jobs": num_nucleos

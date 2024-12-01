@@ -24,6 +24,7 @@ mlflow = "*"
 shap = "*"
 imblearn = "*"
 matplotlib = "*"
+sinfo = "*"
 
 [dev-packages]
 

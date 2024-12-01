@@ -2,6 +2,7 @@
 # -----------------------------------------------------------------------
 import pandas as pd
 import numpy as np
+import math
 
 # Visualizaciones
 # -----------------------------------------------------------------------
@@ -20,7 +21,11 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
     cohen_kappa_score,
-    confusion_matrix
+    confusion_matrix,
+    precision_recall_curve,
+    average_precision_score,
+    roc_curve
+    
 )
 from sklearn.model_selection import cross_validate
 
@@ -293,20 +298,13 @@ def calcular_metricas(self, modelo_nombre):
     # Combinar métricas en un DataFrame
     return pd.DataFrame({"train": metricas_train, "test": metricas_test}).T
 
-def plot_matriz_confusion(self, modelo_nombre):
+def plot_matriz_confusion(modelo_nombre, y_test, y_pred):
     """
     Plotea la matriz de confusión para el modelo seleccionado.
     """
-    if modelo_nombre not in self.resultados:
-        raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
-
-    pred_test = self.resultados[modelo_nombre]["pred_test"]
-
-    if pred_test is None:
-        raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de calcular la matriz de confusión.")
 
     # Matriz de confusión
-    matriz_conf = confusion_matrix(self.y_test, pred_test)
+    matriz_conf = confusion_matrix(y_test, y_pred)
     plt.figure(figsize=(8, 6))
     sns.heatmap(matriz_conf, annot=True, fmt='g', cmap='Blues')
     plt.title(f"Matriz de Confusión ({modelo_nombre})")
@@ -523,3 +521,141 @@ def run_pipelines(X_train, y_train, preprocessing_pipeline, models, cross_val, s
         print(f"Best Parameters: {best_model['params']}")
 
     return best_model, best_pipelines
+
+
+def plot_score_by_threshold_multiple(model_names_list, y_test, y_probs_list, scorer_list=cohen_kappa_score, scorer_name_list='Cohen\'s Kappa'):
+    thresholds = [i / 100 for i in range(1, 100)]
+
+    scorer_dict = {}
+    for scorer_name, scorer in zip(scorer_name_list, scorer_list):
+        scorer_dict[scorer_name] = {model_name: {"scorer": scorer, "scores": []} for model_name in model_names_list}
+
+    n_cols = 2
+    n_rows = math.ceil(len(scorer_list)/2)
+    fig, axes = plt.subplots(ncols=n_cols, nrows=n_rows, figsize=(15, 5*n_rows))
+    axes = axes.flat
+
+    fig.suptitle("Threshold metric comparison")
+
+    for ax, scorer_name in zip(axes, scorer_name_list):
+        for model_name, y_prob in zip(model_names_list, y_probs_list):
+            for threshold in thresholds:
+                preds = (y_prob >= threshold).astype(int)
+                scorer_dict[scorer_name][model_name]["scores"].append(
+                    scorer_dict[scorer_name][model_name]["scorer"](y_test, preds)
+                )
+
+            sns.lineplot(x=thresholds, y=scorer_dict[scorer_name][model_name]["scores"], label=model_name, ax=ax)
+
+        ax.set_xlabel('Threshold')
+        ax.set_ylabel(f'{scorer_name}')
+        ax.set_title(f'{scorer_name} vs Threshold')
+    
+    if len(scorer_list) % 2 != 0:
+        fig.delaxes(axes[-1])
+    
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_auc_and_aucpr(model_name, y_true, y_prob):
+    # calcular AUC 
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    auc = roc_auc_score(y_true, y_prob)
+    
+    # calcular AUC-PR
+    auc_pr = average_precision_score(y_true, y_prob)
+    precision, recall, _ = precision_recall_curve(y_true, y_prob)
+    
+    # plotear ambas curvas en una figura
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # curva ROC
+    ax1.plot(fpr, tpr, label=f'{model_name} curva ROC (AUC = {auc:.4f})')
+    ax1.plot([0, 1], [0, 1], 'k--')
+    ax1.set_xlabel('False Positive Rate')
+    ax1.set_ylabel('True Positive Rate')
+    ax1.set_title(f'Curva ROC para {model_name}')
+    ax1.legend(loc='best')
+
+    # curva AUC-PR
+    ax2.plot(recall, precision, label=f'{model_name} curva Precision-Recall (AUC-PR = {auc_pr:.4f})')
+    ax2.set_xlabel('Recall')
+    ax2.set_ylabel('Precision')
+    ax2.set_title(f'Curva Precision-Recall para {model_name}')
+    ax2.legend(loc='best')
+    
+
+    plt.tight_layout()
+    plt.show()
+    
+    # imprimir valores test de AUC y AUC-PR
+    print(f'{model_name} - test AUC: {auc:.4f}')
+    print(f'{model_name} - test AUC-PR: {auc_pr:.4f}')
+
+
+def find_optimal_threshold(y_true, y_probs, scoring_function, thresholds=None):
+    """
+    Finds the threshold that maximizes the specified scoring function.
+
+    Parameters:
+    - y_true: np.array or list, true binary labels (0s and 1s).
+    - y_probs: np.array or list, predicted probabilities.
+    - scoring_function: callable, function to compute the score (e.g., precision_score).
+    - thresholds: np.array, optional, thresholds to evaluate (default is np.linspace(0, 1, 100)).
+
+    Returns:
+    - optimal_threshold: float, the threshold that maximizes the score.
+    - max_score: float, the maximum score achieved.
+    """
+    if thresholds is None:
+        thresholds = np.linspace(0, 1, 100)  # Default thresholds from 0 to 1
+    
+    scores = []
+    
+    for thresh in thresholds:
+        y_pred = (y_probs >= thresh).astype(int)
+        scores.append(scoring_function(y_true, y_pred))
+    
+    max_score_index = np.argmax(scores)
+    max_score = scores[max_score_index]
+    optimal_threshold = thresholds[max_score_index]
+    
+    return optimal_threshold, max_score
+
+
+def maximize_revenue(y_true, y_probs, thresholds=None):
+    """
+    Finds the threshold that maximizes the custom objective function.
+
+    Parameters:
+    - y_true: np.array or list, true binary labels (0s and 1s).
+    - y_probs: np.array or list, predicted probabilities.
+    - thresholds: np.array, optional, thresholds to evaluate (default is np.linspace(0, 1, 100)).
+
+    Returns:
+    - optimal_threshold: float, the threshold that maximizes the objective function.
+    - max_objective: float, the maximum value of the objective function.
+    """
+    if thresholds is None:
+        thresholds = np.linspace(0, 1, 100) 
+    
+    # start minimum revenue from loss
+    max_revenue = float('-inf')
+    optimal_threshold = None
+    
+    for thresh in thresholds:
+        y_pred = (y_probs >= thresh).astype(int)
+        TP = np.sum((y_pred == 1) & (y_true == 1))
+        FP = np.sum((y_pred == 1) & (y_true == 0))
+        FN = np.sum((y_pred == 0) & (y_true == 1))
+        
+        # calculate the objective function maximize saving
+        revenue = (60 * TP) - (70 * FN) - (10 * FP)
+        
+        # update max_revenue
+        if revenue > max_revenue:
+            max_revenue = revenue
+            optimal_threshold = thresh
+    
+    return optimal_threshold, max_revenue
