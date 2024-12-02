@@ -27,11 +27,14 @@ This project follows a structured approach through the following steps:
    - Addressing class imbalance through resampling techniques.
 4. **Model evaluation:**
    - Testing multiple classification algorithms, mainly Random Forests, Catboost, XGBoost and Decision trees..
-   - Evaluating models u.
+   - Evaluating models on AUC-PR to account for target imbalance.
 5. **Model Optimization:**
    - Fine-tuning hyperparameters using techniques like GridSearchCV.
-6. **Insights and Recommendations:**
-   - Extracting actionable insights to help businesses improve retention strategies.
+6. **Model selection**
+   - Final model selection based on best performing classification threshold.
+7. **Interpretability and insights:**
+   - Interpretation of developed model via SHAP values.
+   - Extraction of actionable insights for business and future  models.
 
 ---
 
@@ -122,18 +125,22 @@ The project relies on the following Python libraries:
 ### Installation Steps
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/username/employee-turnover-prediction
    cd employee-turnover-prediction
    ```
 
 2. Install dependencies:
+
    - Using Pipenv:
+
      ```bash
      pipenv install
      pipenv shell
      ```
    - Using pip:
+   
      ```bash
      pip install -r requirements.txt
      ```
@@ -144,10 +151,12 @@ The project relies on the following Python libraries:
 
 For streamlit application:
 1. Go to ``deployment/`` folder, activate environment and run to activate the Flask API serving:
+
      ```bash
      python main.py
      ```
 2. Go to ``streamlit/`` folder, activate environment and run 
+
      ```bash
      streamlit run turnover_predictor.py
      ```
