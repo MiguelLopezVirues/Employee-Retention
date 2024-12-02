@@ -98,9 +98,6 @@ Employee-Retention/
 
 - Python 3.11+
 - The following libraries:
-[Response #4]
-
-### Libraries and Tools
 
 The project relies on the following Python libraries:
 
@@ -140,7 +137,7 @@ The project relies on the following Python libraries:
      pipenv shell
      ```
    - Using pip:
-   
+
      ```bash
      pip install -r requirements.txt
      ```
@@ -164,12 +161,13 @@ For streamlit application:
 
 ## 🔄 Next Steps
 
-- Tune Random Forest further, as high
-- [Explain a bit more] Explore how GridSearchCV can give worse results for a single parameter optimized, with options included that give better performance when alone. Assuming correct seed control. 
+- Tune Random Forest model further, as signs of overfitting are seen, even though it's the most performing.
+- Explore how GridSearchCV can give worse results for a single parameter optimized, with options included that give better performance when alone. Assuming correct seed control. 
 - Different employees might represent different ROIs of employee retention, thus, it might be a good a idea to either:
     - Develop different models for different profiles based on risk (costs vs. probability)
     - Apply different classification thresholds for different profiles
 - Use ordinal or custom encodings to replace target ones, to allow for SHAP values interpretability.
+- Serve API from AWS deployment.
 
 ---
 
