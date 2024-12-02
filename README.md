@@ -1,5 +1,3 @@
-[Response #1]  
-
 # 🌟 Employee Turnover Prediction
 
 <div style="text-align: center;">
@@ -21,12 +19,12 @@ This project follows a structured approach through the following steps:
 1. **Data preliminary exploration and cleaning:**
    - Initial analysis to understand the dataset's structure and variables.
    - Handling null values, duplicates, and inconsistencies.
-      - Ensuring data quality for accurate modeling.
+   - Ensuring data quality for accurate modeling.
 2. **Feature Engineering evaluation with sklearn pipelines:**
    - Encoding categorical variables and scaling numeric features.
    - Addressing class imbalance through resampling techniques.
 4. **Model evaluation:**
-   - Testing multiple classification algorithms, mainly Random Forests, Catboost, XGBoost and Decision trees..
+   - Testing multiple classification algorithms, mainly Random Forests, Catboost, XGBoost and Decision trees.
    - Evaluating models on AUC-PR to account for target imbalance.
 5. **Model Optimization:**
    - Fine-tuning hyperparameters using techniques like GridSearchCV.
